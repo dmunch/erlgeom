@@ -1,0 +1,11 @@
+{application, 'erlgeom',
+ [{description, "Erlang binding for geometry libraries"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []}
+ ]}.
