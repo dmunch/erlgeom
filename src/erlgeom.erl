@@ -363,11 +363,186 @@ disjoint_test_() ->
      {"Two geometries are not disjoint",
       ?_assertEqual([true,true,true,true,true,true, false, false], Results)}].
 
-simplify_test_() ->
-    Polygon = {'Polygon', [[[-43.59375, -0.3515625], [-31.640625, 15.8203125], [-33.046875, 25.6640625], [-37.265625, 39.7265625], [-34.453125, 67.8515625], [6.328125, 58.7109375], [21.09375, 65.0390625], [35.15625, 63.6328125], [78.046875, 63.6328125], [75.234375, 48.1640625], [65.390625, 33.3984375], [43.59375, 36.2109375], [-6.328125, 36.2109375], [-0.703125, 31.9921875], [2.109375, 5.9765625], [3.515625, -16.5234375], [-17.578125, -19.3359375], [-24.609375, -5.9765625], [-40.078125, -11.6015625], [-40.078125, -11.6015625], [-43.59375, -0.3515625]]]},
-    {'Polygon', [NewCoords]} = erlgeom:topology_preserve_simplify(erlgeom:to_geom(Polygon), 30.0),
+intersects_test_() ->
+    Geom1 = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    Geom2 = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
+    [{"Linestring intersects works", ?_assert(erlgeom:intersects(Geom1, Geom2))}].
+
+intersection_test_() ->
+    Geom1 = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    Geom2 = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
+    Intersection = {'LineString', [[2.0,2.0],[9.0,9.0]]},
+    {ok, Intersection1} = erlgeom:intersection(Geom1, Geom2),
+    [{"Linestring intersection works", ?_assertEqual(Intersection, erlgeom:from_geom(Intersection1))}].
+
+contains_test_() -> 
+    Geom1 = erlgeom:to_geom({'Polygon', [[
+        [0, 0],
+        [0, 10],
+        [10, 0],
+        [0, 0]
+      ]]}), 
+    Geom2 = erlgeom:to_geom({'Polygon', [[
+        [1, 1],
+        [1, 2],
+        [2, 2],
+        [1, 1]
+      ]]}), 
+    [{"Polygon contains works", ?_assert(erlgeom:contains(Geom1, Geom2))}].
+
+geosstrtree_create_test_() ->
+    GeosSTRtree = erlgeom:geosstrtree_create(),
+    Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
+    [{"STRTree creation works", ?_assertEqual([], Geoms)}].
+    %etap:is(Geoms, [], "STRTree creation works.").
+
+geosstrtree_insert_test_() ->
+    GeosSTRtree = erlgeom:geosstrtree_create(),
+    Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
+    Geom1 = erlgeom:to_geom(Ls1),
+    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
+    [Element1 | _] = erlgeom:geosstrtree_iterate(GeosSTRtree),
+    [{"STRTree insertion works", ?_assertEqual(Ls1, Element1)}].
+    %etap:is(Element1, Ls1, "STRTree insertion works.").
+
+geosstrtree_iterate_test_() ->
+    GeosSTRtree = erlgeom:geosstrtree_create(),
+    Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
+    [{"STRTree iteration works", ?_assertEqual(0, length(Geoms))}].
+%    etap:is(length(Geoms), 0,"STRTree iteration works.").
+
+geosstrtree_query_test_() ->
+    GeosSTRtree = erlgeom:geosstrtree_create(),
+    Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
+    Geom1 = erlgeom:to_geom(Ls1),
+    Ls2 = {'LineString', [[1.0,1.0],[7.0,7.0]]},
+    Geom2 = erlgeom:to_geom(Ls2),
+    Ls3 = {'LineString', [[3.0,3.0],[6.0,6.0]]},
+    Geom3 = erlgeom:to_geom(Ls3),
+    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
+    erlgeom:geosstrtree_insert(GeosSTRtree, Geom2, Ls2),
+    erlgeom:geosstrtree_insert(GeosSTRtree, Geom3, Ls3),
+    Ls4 = {'LineString', [[6.0,6.0],[7.0,7.0]]},
+    Geom4 = erlgeom:to_geom(Ls4),
+    Geoms = erlgeom:geosstrtree_query(GeosSTRtree, Geom4),
+    [{"STRTree query works", ?_assertEqual(2, length(Geoms))}].
+
+%%geosstrtree_remove_test_() ->
+%%    GeosSTRtree = erlgeom:geosstrtree_create(),
+%%    Ls1 = {'LineString', [[3.0,3.0],[6.0,6.0]]},
+%%    Geom1 = erlgeom:to_geom(Ls1),
+%%    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
+%%    erlgeom:geosstrtree_remove(GeosSTRtree, Geom1, Ls1),
+%%    Geoms = erlgeom:geosstrtree_query(GeosSTRtree, Geom1),
+%%    [{"STRTree remove works", ?_assertEqual(0, length(Geoms))}].
+
+
+% Topology operations
+
+topology_preserve_simplify_test_() ->
+    Polygon = {'Polygon', [[
+        [-43.59375, -0.3515625],
+        [-31.640625, 15.8203125],
+        [-33.046875, 25.6640625],
+        [-37.265625, 39.7265625],
+        [-34.453125, 67.8515625],
+        [6.328125, 58.7109375],
+        [21.09375, 65.0390625],
+        [35.15625, 63.6328125],
+        [78.046875, 63.6328125],
+        [75.234375, 48.1640625],
+        [65.390625, 33.3984375],
+        [43.59375, 36.2109375],
+        [-6.328125, 36.2109375],
+        [-0.703125, 31.9921875],
+        [2.109375, 5.9765625],
+        [3.515625, -16.5234375],
+        [-17.578125, -19.3359375],
+        [-24.609375, -5.9765625],
+        [-40.078125, -11.6015625],
+        [-40.078125, -11.6015625],
+        [-43.59375, -0.3515625]]]},
+    {'Polygon', 
+        [NewCoords]} = erlgeom:topology_preserve_simplify(
+            erlgeom:to_geom(Polygon),
+            30.0),
     [{"Geometry was simplified",
       ?_assertEqual(6, length(NewCoords))}].
+
+
+get_centroid_test_() ->
+    Pt = {'Point',[3.0,3.0]},
+    Pt1 = erlgeom:to_geom(Pt),
+    {ok, CentroidGeom} = erlgeom:get_centroid(Pt1),
+    [{"Point get_centroid_geom works", ?_assertEqual(Pt, erlgeom:from_geom(CentroidGeom))}].
+
+% Validity checking
+
+is_valid_true_test_() ->
+    Geom1 = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    [{"Linestrings is_valid equals true works", ?_assert(erlgeom:is_valid(Geom1))}].
+
+is_valid_false_test_() ->
+    WktReader = erlgeom:wktreader_create(),
+    Geom1 = erlgeom:wktreader_read(WktReader, 
+        "POLYGON((0 0, 1 1, 1 2, 1 1, 0 0))"),
+    [{"Linestrings is_valid equals false works", ?_assertNot(erlgeom:is_valid(Geom1))}].
+
+
+% Reader and Writer APIs
+
+wktreader_read_test_() ->
+    Pt = {'Point', [10.0, 10.0]},
+    WktReader = erlgeom:wktreader_create(),
+    Geom1 = erlgeom:wktreader_read(WktReader, "POINT(10.0 10.0)"),
+    Pt1 = erlgeom:from_geom(Geom1), 
+    [{"Point wktreader_read works", ?_assertEqual(Pt, Pt1)}].
+
+wkbreader_read_test_() ->
+    Pt = {'Point',[10.0,10.0]},
+    Geom1 = erlgeom:to_geom(Pt),
+    WkbWriter = erlgeom:wkbwriter_create(),
+    Bin = erlgeom:wkbwriter_write(WkbWriter, Geom1),
+    WkbReader = erlgeom:wkbreader_create(),
+    Geom2 = erlgeom:wkbreader_read(WkbReader, Bin),
+    Pt2 = erlgeom:from_geom(Geom2),
+    [{"Point wkbreader_read works", ?_assertEqual(Pt, Pt2)}].
+
+wkbreader_readhex_test_() ->
+    Pt = {'Point',[10.0,10.0]},
+    WkbReader = erlgeom:wkbreader_create(),
+    Geom1 = erlgeom:wkbreader_readhex(WkbReader,
+        "010100000000000000000024400000000000002440"),
+    Pt1 = erlgeom:from_geom(Geom1),
+    [{"Point wkbreader_readhex works", ?_assertEqual(Pt, Pt1)}].
+
+wktwriter_write_test_() ->
+    Pt = "POINT (10.0000000000000000 10.0000000000000000)",
+    WktReader = erlgeom:wktreader_create(),
+    Geom1 = erlgeom:wktreader_read(WktReader, "POINT(10 10)"),
+    WktWriter = erlgeom:wktwriter_create(),
+    Pt1 = erlgeom:wktwriter_write(WktWriter, Geom1),
+    [{"Point wktwriter_write works", ?_assertEqual(Pt, Pt1)}].
+
+wkbwriter_write_test_() ->
+    Pt = "POINT(10.0 10.0)",
+    WktReader = erlgeom:wktreader_create(),
+    Geom1 = erlgeom:wktreader_read(WktReader, Pt),
+    Pt1 = erlgeom:from_geom(Geom1),
+    WkbWriter = erlgeom:wkbwriter_create(),
+    Bin = erlgeom:wkbwriter_write(WkbWriter, Geom1),
+    WkbReader = erlgeom:wkbreader_create(),
+    Geom2 = erlgeom:wkbreader_read(WkbReader, Bin),
+    Pt2 = erlgeom:from_geom(Geom2),
+    [{"Point wkbwriter_write works", ?_assertEqual(Pt1, Pt2)}].
+
+wkbwriter_writehex_test_() ->
+    Pt = "010100000000000000000024400000000000002440",
+    WktReader = erlgeom:wktreader_create(),
+    Geom = erlgeom:wktreader_read(WktReader, "POINT(10.0 10.0)"),
+    WkbWriter = erlgeom:wkbwriter_create(),
+    Hex = erlgeom:wkbwriter_writehex(WkbWriter, Geom),
+    [{"Point wktwriter_writehex works", ?_assertEqual(Pt, Hex)}].
 
 is_point_test_() ->
     [{"Valid point with integers",
@@ -532,5 +707,7 @@ is_valid_geometry_multi_collection_test_() ->
       ?_assertMatch({false, _}, is_valid_geometry(GC2))},
      {"Invalid GeometryCollection: invalid geometry type",
       ?_assertMatch({false, _}, is_valid_geometry(GC3))}].
+
+
 
 -endif.
