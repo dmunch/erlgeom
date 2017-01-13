@@ -17,10 +17,11 @@ main(_) ->
     code:add_pathz("test"),
     code:add_pathz("ebin"),
 
-    etap:plan(18),
+    etap:plan(19),
     test_disjoint(),
     test_intersects(),
     test_intersection(),
+    test_contains(),
     test_geosstrtree_create(),
     test_geosstrtree_insert(),
     test_geosstrtree_iterate(),
@@ -145,6 +146,22 @@ test_intersects() ->
     Geom2 = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
     etap:is(erlgeom:intersects(Geom1, Geom2), true,
         "Linestrings intersects works").
+
+test_contains() -> 
+    Geom1 = erlgeom:to_geom({'Polygon', [[
+        [0, 0],
+        [0, 10],
+        [10, 0],
+        [0, 0]
+      ]]}), 
+    Geom2 = erlgeom:to_geom({'Polygon', [[
+        [1, 1],
+        [1, 2],
+        [2, 2],
+        [1, 1]
+      ]]}), 
+    etap:is(erlgeom:contains(Geom1, Geom2), true,
+        "Polygon contains works").
 
 % Topology operations
 

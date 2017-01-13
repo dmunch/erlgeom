@@ -628,6 +628,38 @@ intersects(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 }
 
+/*
+Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
+Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}), 
+erlgeom:contains(Geom1, Geom2).
+true
+*/
+static ERL_NIF_TERM
+contains(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    GEOSGeometry **geom1;
+    GEOSGeometry **geom2;
+
+    if (argc != 2) {
+        return enif_make_badarg(env);
+    }
+
+    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {
+        return enif_make_badarg(env);
+    }
+    if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {
+        return enif_make_badarg(env);
+    }
+
+    int result;
+    if ((result = GEOSContains(*geom1, *geom2)) == 1 ) {
+        return enif_make_atom(env, "true");
+    } else if (result == 0) {
+        return enif_make_atom(env, "false");
+    } else {
+        return enif_make_atom(env, "error");
+    }
+}
 
 /************************************************************************
  *
@@ -1339,6 +1371,7 @@ static ErlNifFunc nif_funcs[] =
     {"get_centroid", 1, get_centroid},
     {"intersection", 2, intersection},
     {"intersects", 2, intersects},
+    {"contains", 2, contains},
     {"is_valid", 1, is_valid},
     {"to_geom", 1, to_geom},
     {"topology_preserve_simplify", 2, topology_preserve_simplify},

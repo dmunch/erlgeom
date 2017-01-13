@@ -26,6 +26,7 @@
     get_centroid/1,
     intersection/2,
     intersects/2,
+    contains/2,
     is_valid/1,
     topology_preserve_simplify/2,
     to_geom/1,
@@ -90,6 +91,9 @@ intersection(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
 intersects(_Geom1, _Geom2) ->
+    erlang:nif_error(nif_not_loaded).
+
+contains(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
 is_valid(_Geom1) ->
