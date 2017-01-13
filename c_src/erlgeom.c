@@ -36,7 +36,7 @@ static ErlNifResourceType* GEOSSTRTREE_RESOURCE;
 /* Currently support for 2 dimensions only */
 int
 set_GEOSCoordSeq_from_eterm_list(GEOSCoordSequence *seq, int pos,
-        ErlNifEnv *env, const ERL_NIF_TERM *coords) 
+        ErlNifEnv *env, GEOSContextHandle_t context, const ERL_NIF_TERM *coords) 
 {
     double dbl_coord;
     int int_coord;
@@ -49,7 +49,7 @@ set_GEOSCoordSeq_from_eterm_list(GEOSCoordSequence *seq, int pos,
         else if (!enif_get_double(env, head, &dbl_coord)) {
             return enif_make_badarg(env);
         }
-        GEOSCoordSeq_setX(seq, pos, dbl_coord);
+        GEOSCoordSeq_setX_r(context, seq, pos, dbl_coord);
 
         enif_get_list_cell(env, tail, &head, &tail);
         if (enif_get_int(env, head, &int_coord)) {
@@ -58,24 +58,24 @@ set_GEOSCoordSeq_from_eterm_list(GEOSCoordSequence *seq, int pos,
         else if (!enif_get_double(env, head, &dbl_coord)) {
             return enif_make_badarg(env);
         }
-        GEOSCoordSeq_setY(seq, pos, dbl_coord);
+        GEOSCoordSeq_setY_r(context, seq, pos, dbl_coord);
         return 1;
     }
     return enif_make_badarg(env);
 }
 
 GEOSGeometry*
-eterm_to_geom_point(ErlNifEnv *env, const ERL_NIF_TERM *coords_list)
+eterm_to_geom_point(ErlNifEnv *env, GEOSContextHandle_t context, const ERL_NIF_TERM *coords_list)
 {
     GEOSCoordSequence *coords_seq;
 
-    coords_seq = GEOSCoordSeq_create(1, DIMENSION);
-    set_GEOSCoordSeq_from_eterm_list(coords_seq, 0, env, coords_list);
-    return GEOSGeom_createPoint(coords_seq);
+    coords_seq = GEOSCoordSeq_create_r(context, 1, DIMENSION);
+    set_GEOSCoordSeq_from_eterm_list(coords_seq, 0, env, context, coords_list);
+    return GEOSGeom_createPoint_r(context, coords_seq);
 }
 
 GEOSCoordSeq
-eterm_to_geom_linestring_coords(ErlNifEnv *env,
+eterm_to_geom_linestring_coords(ErlNifEnv *env, GEOSContextHandle_t context,
     const ERL_NIF_TERM *coords_list)
 {
     unsigned int i=0, len;
@@ -83,9 +83,9 @@ eterm_to_geom_linestring_coords(ErlNifEnv *env,
     ERL_NIF_TERM head, tail;
 
     enif_get_list_length(env, *coords_list, &len);
-    coords_seq = GEOSCoordSeq_create(len, DIMENSION);
+    coords_seq = GEOSCoordSeq_create_r(context, len, DIMENSION);
     while (enif_get_list_cell(env, *coords_list, &head, &tail)) {
-        if (!set_GEOSCoordSeq_from_eterm_list(coords_seq, i, env, &head)) {
+        if (!set_GEOSCoordSeq_from_eterm_list(coords_seq, i, env, context, &head)) {
             return NULL;
         }
         i++;
@@ -95,15 +95,15 @@ eterm_to_geom_linestring_coords(ErlNifEnv *env,
 }
 
 GEOSGeometry*
-eterm_to_geom_linestring(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
+eterm_to_geom_linestring(ErlNifEnv *env, GEOSContextHandle_t context, const ERL_NIF_TERM *eterm)
 {
-    GEOSCoordSequence *coords_seq = eterm_to_geom_linestring_coords(env,
+    GEOSCoordSequence *coords_seq = eterm_to_geom_linestring_coords(env, context,
         eterm);
-    return GEOSGeom_createLineString(coords_seq);
+    return GEOSGeom_createLineString_r(context, coords_seq);
 }
 
 GEOSGeometry*
-eterm_to_geom_polygon(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
+eterm_to_geom_polygon(ErlNifEnv *env, GEOSContextHandle_t context, const ERL_NIF_TERM *eterm)
 {
     ERL_NIF_TERM outer_eterm, inner_eterm, tail;
     unsigned int rings_num, i;
@@ -113,24 +113,24 @@ eterm_to_geom_polygon(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
 
     enif_get_list_length(env, *eterm, &rings_num);
     enif_get_list_cell(env, *eterm, &outer_eterm, &inner_eterm);
-    outer_seq = eterm_to_geom_linestring_coords(env, &outer_eterm);
-    outer_geom = GEOSGeom_createLinearRing(outer_seq);
+    outer_seq = eterm_to_geom_linestring_coords(env, context, &outer_eterm);
+    outer_geom = GEOSGeom_createLinearRing_r(context, outer_seq);
 
     // if there are holes
     geoms = enif_alloc(sizeof(GEOSGeometry*)*rings_num-1);
     for (i=0; enif_get_list_cell(env, inner_eterm, &inner_eterm, &tail); i++) {
-        inner_seq = eterm_to_geom_linestring_coords(env, &inner_eterm);
-        geoms[i] = GEOSGeom_createLinearRing(inner_seq);
+        inner_seq = eterm_to_geom_linestring_coords(env, context, &inner_eterm);
+        geoms[i] = GEOSGeom_createLinearRing_r(context, inner_seq);
         inner_eterm = tail;
     }
-    geom = GEOSGeom_createPolygon(outer_geom, geoms, rings_num-1);
+    geom = GEOSGeom_createPolygon_r(context, outer_geom, geoms, rings_num-1);
     enif_free(geoms);
     return geom;
 }
 
 GEOSGeometry*
-eterm_to_geom_multi(ErlNifEnv *env, ERL_NIF_TERM eterm, int type,
-    GEOSGeometry*(*eterm_to_geom)(ErlNifEnv *env, const ERL_NIF_TERM *eterm))
+eterm_to_geom_multi(ErlNifEnv *env, GEOSContextHandle_t context, ERL_NIF_TERM eterm, int type,
+    GEOSGeometry*(*eterm_to_geom)(ErlNifEnv *env, GEOSContextHandle_t context, const ERL_NIF_TERM *eterm))
 {
     unsigned int i, geoms_num;
     GEOSGeometry *geom;
@@ -140,16 +140,16 @@ eterm_to_geom_multi(ErlNifEnv *env, ERL_NIF_TERM eterm, int type,
     enif_get_list_length(env, eterm, &geoms_num);
     geoms = enif_alloc(sizeof(GEOSGeometry*)*geoms_num);
     for (i=0; enif_get_list_cell(env, eterm , &eterm, &tail); i++) {
-        geoms[i] = (*eterm_to_geom)(env, &eterm);
+        geoms[i] = (*eterm_to_geom)(env, context, &eterm);
         eterm = tail;
     }
-    geom = GEOSGeom_createCollection(type, geoms, geoms_num);
+    geom = GEOSGeom_createCollection_r(context, type, geoms, geoms_num);
     enif_free(geoms);
     return geom;
 }
 
 GEOSGeometry*
-eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
+eterm_to_geom(ErlNifEnv *env, GEOSContextHandle_t context, const ERL_NIF_TERM *eterm)
 {
     // coords_num is the number coordinates for Points and LineStrings,
     // in a case of Polygons it's the number of rings (inner and outer),
@@ -180,7 +180,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyPoint();
         //}
         //else {
-            geom = eterm_to_geom_point(env, &geom_tuple[1]);
+            geom = eterm_to_geom_point(env, context, &geom_tuple[1]);
         //}
     }
     else if(Streq(type, "LineString")) {
@@ -189,7 +189,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyLineString();
         //}
         //else {
-            geom = eterm_to_geom_linestring(env, &geom_tuple[1]);
+            geom = eterm_to_geom_linestring(env, context, &geom_tuple[1]);
        //}
     }
     // The polygon follows the GeoJSON specification. First element
@@ -200,7 +200,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyPolygon();
         //}
         //else {
-            geom = eterm_to_geom_polygon(env, &geom_tuple[1]);
+            geom = eterm_to_geom_polygon(env, context, &geom_tuple[1]);
         //}
     }
     else if(Streq(type, "MultiPoint")) {
@@ -209,7 +209,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyCollection(GEOS_MULTIPOINT);
         //}
         //else {
-            geom = eterm_to_geom_multi(env, geom_tuple[1], GEOS_MULTIPOINT,
+            geom = eterm_to_geom_multi(env, context, geom_tuple[1], GEOS_MULTIPOINT,
                 eterm_to_geom_point);
         //}
     }
@@ -219,7 +219,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyCollection(GEOS_MULTILINESTRING);
         //}
         //else {
-            geom = eterm_to_geom_multi(env, geom_tuple[1],
+            geom = eterm_to_geom_multi(env, context, geom_tuple[1],
                 GEOS_MULTILINESTRING, eterm_to_geom_linestring);
         //}
     }
@@ -229,7 +229,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyCollection(GEOS_MULTIPOLYGON);
         //}
         //else {
-            geom = eterm_to_geom_multi(env, geom_tuple[1], GEOS_MULTIPOLYGON,
+            geom = eterm_to_geom_multi(env, context, geom_tuple[1], GEOS_MULTIPOLYGON,
                 eterm_to_geom_polygon);
         //}
     }
@@ -239,7 +239,7 @@ eterm_to_geom(ErlNifEnv *env, const ERL_NIF_TERM *eterm)
         //    geom = GEOSGeom_createEmptyCollection(GEOS_GEOMETRYCOLLECTION);
         //}
         //else {
-            geom = eterm_to_geom_multi(env, geom_tuple[1],
+            geom = eterm_to_geom_multi(env, context, geom_tuple[1],
                 GEOS_GEOMETRYCOLLECTION, eterm_to_geom);
         //}
     }
@@ -1329,15 +1329,58 @@ geosstrtree_remove(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
  *
  ***********************************************************************/
 
+typedef struct
+{
+  int error_count;
+  ERL_NIF_TERM error_list;
+  ErlNifEnv* env;
+} UserData;
+
+static void noticeMessageHandler(const char *message, void *userdata)
+{
+}
+
+static void errorMessageHandler(const char *message, void *userdata)
+{
+  UserData* ud = (UserData*) userdata;
+    
+  if(!ud->error_list) {
+    ud->error_list = enif_make_list(ud->env, 0);
+  }
+  ud->error_list = enif_make_list_cell(ud->env, enif_make_string(ud->env, message, ERL_NIF_LATIN1), ud->error_list);
+}
+
 static
 ERL_NIF_TERM to_geom(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ERL_NIF_TERM eterm;
     GEOSGeometry **geom = \
         enif_alloc_resource(GEOSGEOM_RESOURCE, sizeof(GEOSGeometry*));
 
-    *geom = eterm_to_geom(env, argv);
-    eterm = enif_make_resource(env, geom);
-    enif_release_resource(geom);
+    GEOSContextHandle_t context = GEOS_init_r();
+    UserData* user_data = (UserData*) malloc(sizeof(UserData));
+    user_data->error_list = 0; 
+    user_data->env = env;
+
+    GEOSContext_setNoticeMessageHandler_r(context, noticeMessageHandler, user_data); 
+    GEOSContext_setErrorMessageHandler_r(context, errorMessageHandler, user_data); 
+
+    *geom = eterm_to_geom(env, context, argv);
+
+    if (user_data->error_list) {
+        eterm = enif_make_tuple2(env,
+            enif_make_atom(env, "error"),
+            user_data->error_list);
+        enif_release_resource(geom);
+    } else {
+        eterm = enif_make_tuple2(env,
+            enif_make_atom(env, "ok"),
+            enif_make_resource(env, geom));
+        enif_release_resource(geom);
+    }
+
+    GEOS_finish_r(context);
+    free(user_data);
+
     return eterm;
 }
 

@@ -244,27 +244,27 @@ from_geom(_Geom) ->
 
 point_test_() ->
     Pt = {'Point',[0.0, 1.1]},
-    Pt1 = erlgeom:to_geom(Pt),
+    {ok, Pt1} = erlgeom:to_geom(Pt),
     [{"Point conversion works",
       ?_assertEqual(Pt, erlgeom:from_geom(Pt1))}].
 
 linestring_test_() ->
     Ls = {'LineString', [[1.0,1.0],[5.0,5.0],[23.42,592.13],[98.2,40.2]]},
-    Ls1 = erlgeom:to_geom(Ls),
+    {ok, Ls1} = erlgeom:to_geom(Ls),
     [{"LineString conversion works",
       ?_assertEqual(Ls, erlgeom:from_geom(Ls1))}].
 
 polygon_test_() ->
     Py = {'Polygon', [[[5.2,6.3],[70.5,58.7],[0.1,20.55],[5.2,6.3]], [[10.0,20.1],[10.1,20.4],[9.8,20.2],[10.0,20.1]]]},
-    Py1 = erlgeom:to_geom(Py),
+    {ok, Py1} = erlgeom:to_geom(Py),
     [{"Polygon conversion works",
       ?_assertEqual(Py, erlgeom:from_geom(Py1))}].
 
 multipoint_test_() ->
     Mp = {'MultiPoint', [[1.0,1.0],[5.0,5.0]]},
-    Mp1 = erlgeom:to_geom(Mp),
+    {ok, Mp1} = erlgeom:to_geom(Mp),
     Mp2 = {'MultiPoint', [[1.0,1.0],[5.0,5.0],[23.42,592.13],[98.2,40.2]]},
-    Mp3 = erlgeom:to_geom(Mp2),
+    {ok, Mp3} = erlgeom:to_geom(Mp2),
     [{"MultiPoint conversion works (a)",
       ?_assertEqual(Mp, erlgeom:from_geom(Mp1))},
      {"MultiPoint conversion works (b)",
@@ -272,21 +272,21 @@ multipoint_test_() ->
 
 multilinestring_test_() ->
     Ml = {'MultiLineString', [[[5.2,6.3],[70.5,58.7],[0.1,20.55],[5.2,6.3]], [[10.0,20.1],[10.1,20.4],[9.8,20.2],[10.0,20.1]]]},
-    Ml1 = erlgeom:to_geom(Ml),
+    {ok, Ml1} = erlgeom:to_geom(Ml),
     [{"MultiLineString conversion works",
       ?_assertEqual(Ml, erlgeom:from_geom(Ml1))}].
 
 multipolygon_test_() ->
     % From GeoJSON spec
     My = {'MultiPolygon',[[[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],[[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],[[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]]]},
-    My1 = erlgeom:to_geom(My),
+    {ok, My1} = erlgeom:to_geom(My),
     [{"MultiPolygon conversion works",
       ?_assertEqual(My, erlgeom:from_geom(My1))}].
 
 geometrycollection_test_() ->
     % From GeoJSON spec
     Gc = {'GeometryCollection',[{'Point',[100.0, 0.0]},{'LineString',[[101.0, 0.0],[102.0, 1.0]]}]},
-    Gc1 = erlgeom:to_geom(Gc),
+    {ok, Gc1} = erlgeom:to_geom(Gc),
     [{"GeometryCollection conversion works",
       ?_assertEqual(Gc, erlgeom:from_geom(Gc1))}].
 
@@ -300,8 +300,8 @@ invalid_geoms_test_() ->
 disjoint_test_() ->
     Pt = {'Point',[3.0, 3.0]},
     Ls = {'LineString', [[1.0,1.0],[5.0,5.0]]},
-    Pt1 = erlgeom:to_geom(Pt),
-    Ls1 = erlgeom:to_geom(Ls),
+    {ok, Pt1} = erlgeom:to_geom(Pt),
+    {ok, Ls1} = erlgeom:to_geom(Ls),
 
     % Some geometries are based on the GeoJSON specification
     % http://geojson.org/geojson-spec.html (2010-08-17)
@@ -334,7 +334,7 @@ disjoint_test_() ->
         ]}
     ],
 
-    QueryGeom = erlgeom:to_geom(
+    {ok, QueryGeom} = erlgeom:to_geom(
         {'MultiPolygon',[[[[102.21960449216,1.66524628779],
                    [101.10998535158,2.0385856805057],
                    [100.30798339848,3.0483190208145],
@@ -356,33 +356,32 @@ disjoint_test_() ->
                    [102.52722167964,-0.015427421675798],
                    [102.68103027339,1.2588853394239],
                    [100.13220214849,2.3679314141203]]]]}),
-    Results = [erlgeom:disjoint(QueryGeom, erlgeom:to_geom(Geom))
-        || Geom <- Geoms],
+    Results = lists:map(fun(Geom) -> {ok, G} = erlgeom:to_geom(Geom), erlgeom:disjoint(QueryGeom, G) end, Geoms),
     [{"Geometries are not disjoint",
       ?_assertNot(erlgeom:disjoint(Pt1, Ls1))},
      {"Two geometries are not disjoint",
       ?_assertEqual([true,true,true,true,true,true, false, false], Results)}].
 
 intersects_test_() ->
-    Geom1 = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
-    Geom2 = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
+    {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    {ok, Geom2} = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
     [{"Linestring intersects works", ?_assert(erlgeom:intersects(Geom1, Geom2))}].
 
 intersection_test_() ->
-    Geom1 = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
-    Geom2 = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
+    {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    {ok, Geom2} = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
     Intersection = {'LineString', [[2.0,2.0],[9.0,9.0]]},
     {ok, Intersection1} = erlgeom:intersection(Geom1, Geom2),
     [{"Linestring intersection works", ?_assertEqual(Intersection, erlgeom:from_geom(Intersection1))}].
 
 contains_test_() -> 
-    Geom1 = erlgeom:to_geom({'Polygon', [[
+   {ok, Geom1} = erlgeom:to_geom({'Polygon', [[
         [0, 0],
         [0, 10],
         [10, 0],
         [0, 0]
       ]]}), 
-    Geom2 = erlgeom:to_geom({'Polygon', [[
+   {ok, Geom2} = erlgeom:to_geom({'Polygon', [[
         [1, 1],
         [1, 2],
         [2, 2],
@@ -399,7 +398,7 @@ geosstrtree_create_test_() ->
 geosstrtree_insert_test_() ->
     GeosSTRtree = erlgeom:geosstrtree_create(),
     Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
-    Geom1 = erlgeom:to_geom(Ls1),
+    {ok, Geom1} = erlgeom:to_geom(Ls1),
     erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
     [Element1 | _] = erlgeom:geosstrtree_iterate(GeosSTRtree),
     [{"STRTree insertion works", ?_assertEqual(Ls1, Element1)}].
@@ -414,16 +413,16 @@ geosstrtree_iterate_test_() ->
 geosstrtree_query_test_() ->
     GeosSTRtree = erlgeom:geosstrtree_create(),
     Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
-    Geom1 = erlgeom:to_geom(Ls1),
+    {ok, Geom1} = erlgeom:to_geom(Ls1),
     Ls2 = {'LineString', [[1.0,1.0],[7.0,7.0]]},
-    Geom2 = erlgeom:to_geom(Ls2),
+    {ok, Geom2} = erlgeom:to_geom(Ls2),
     Ls3 = {'LineString', [[3.0,3.0],[6.0,6.0]]},
-    Geom3 = erlgeom:to_geom(Ls3),
+    {ok, Geom3} = erlgeom:to_geom(Ls3),
     erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
     erlgeom:geosstrtree_insert(GeosSTRtree, Geom2, Ls2),
     erlgeom:geosstrtree_insert(GeosSTRtree, Geom3, Ls3),
     Ls4 = {'LineString', [[6.0,6.0],[7.0,7.0]]},
-    Geom4 = erlgeom:to_geom(Ls4),
+    {ok, Geom4} = erlgeom:to_geom(Ls4),
     Geoms = erlgeom:geosstrtree_query(GeosSTRtree, Geom4),
     [{"STRTree query works", ?_assertEqual(2, length(Geoms))}].
 
@@ -462,24 +461,23 @@ topology_preserve_simplify_test_() ->
         [-40.078125, -11.6015625],
         [-40.078125, -11.6015625],
         [-43.59375, -0.3515625]]]},
+    {ok, PolyGeom} = erlgeom:to_geom(Polygon),
     {'Polygon', 
-        [NewCoords]} = erlgeom:topology_preserve_simplify(
-            erlgeom:to_geom(Polygon),
-            30.0),
+        [NewCoords]} = erlgeom:topology_preserve_simplify(PolyGeom, 30.0),
     [{"Geometry was simplified",
       ?_assertEqual(6, length(NewCoords))}].
 
 
 get_centroid_test_() ->
     Pt = {'Point',[3.0,3.0]},
-    Pt1 = erlgeom:to_geom(Pt),
+    {ok, Pt1} = erlgeom:to_geom(Pt),
     {ok, CentroidGeom} = erlgeom:get_centroid(Pt1),
     [{"Point get_centroid_geom works", ?_assertEqual(Pt, erlgeom:from_geom(CentroidGeom))}].
 
 % Validity checking
 
 is_valid_true_test_() ->
-    Geom1 = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
     [{"Linestrings is_valid equals true works", ?_assert(erlgeom:is_valid(Geom1))}].
 
 is_valid_false_test_() ->
@@ -500,7 +498,7 @@ wktreader_read_test_() ->
 
 wkbreader_read_test_() ->
     Pt = {'Point',[10.0,10.0]},
-    Geom1 = erlgeom:to_geom(Pt),
+    {ok, Geom1} = erlgeom:to_geom(Pt),
     WkbWriter = erlgeom:wkbwriter_create(),
     Bin = erlgeom:wkbwriter_write(WkbWriter, Geom1),
     WkbReader = erlgeom:wkbreader_create(),
@@ -598,13 +596,20 @@ is_valid_linestring_geometry_test_() ->
      {"Invalid LineString: not enough positions",
       ?_assertMatch({false, _}, is_valid_geometry(LineString5))}].
 
-is_valid_polygon_geometry_test_() ->
+to_geom_returns_error_test_() ->
+    Polygon5 = {'Polygon', [[[20, 30], [50, 60], [30, 30], [20, 31]]]},
+     {"Invalid Polygon, to_geom returns error ",
+      ?_assertMatch({error, ["Shell is not a LinearRing",
+                             "IllegalArgumentException: Points of LinearRing do not form a closed linestring"]}, to_geom(Polygon5))}.
+
+  is_valid_polygon_geometry_test_() ->
     % Tests for Polygon geometries
     Polygon1 = {'Polygon', [[[20, 30], [50, 60], [30, 10], [20, 30]]]},
     Polygon2 = {'Polygon', [[[20, 30], [50, 60], [10, 70], [20, 30]],
         [[20, 55], [28, 60], [33, 53], [25, 48], [20, 55]]]},
     Polygon3 = {'Polygon', [[20, 30], [50, 60], [30, 10], [20, 30]]},
     Polygon4 = {'Polygon', [[[20, 30], [50, 60], [30], [20, 30]]]},
+    Polygon5 = {'Polygon', [[[20, 30], [50, 60], [30, 30], [20, 31]]]},
     Something = {'Something', [[[20, 30], [50, 60], [30], [20, 30]]]},
     [{"Valid Polygon",
       ?_assert(is_valid_geometry(Polygon1))},
@@ -612,6 +617,8 @@ is_valid_polygon_geometry_test_() ->
     %POLYGON((20 55, 28 60, 33 53, 25 48, 20 55))
      {"Valid Polygon with hole",
       ?_assert(is_valid_geometry(Polygon2))},
+     {"Invalid Polygon but still considered valid",
+      ?_assert(is_valid_geometry(Polygon5))},
      {"Invalid Polygon: not nested enough",
       ?_assertMatch({false, _}, is_valid_geometry(Polygon3))},
      {"Invalid Polygon: invalid point somewhere",
