@@ -27,6 +27,7 @@
     intersection/2,
     intersects/2,
     contains/2,
+    within/2,
     is_valid/1,
     topology_preserve_simplify/2,
     to_geom/1,
@@ -94,6 +95,9 @@ intersects(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
 contains(_Geom1, _Geom2) ->
+    erlang:nif_error(nif_not_loaded).
+
+within(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
 is_valid(_Geom1) ->
@@ -389,13 +393,35 @@ contains_test_() ->
       ]]}), 
     [{"Polygon contains works", ?_assert(erlgeom:contains(Geom1, Geom2))}].
 
+within_test_() -> 
+   {ok, Geom1} = erlgeom:to_geom({'MultiPolygon', [[[
+        [0.0, 0.0],
+        [0.0, 10.0],
+        [10.0, 10.0],
+        [10.0, 0.0],
+        [0.0, 0.0]
+      ]]]}), 
+   {ok, Geom2} = erlgeom:to_geom({'Polygon', [[
+        [1.0, 1.0],
+        [1.0, 2.0],
+        [2.0, 2.0],
+        [2.0, 1.0],
+        [1.0, 1.0]
+      ]]}), 
+   {ok, Point1} = erlgeom:to_geom({'Point', [2.0, 2.0]}), 
+   {ok, Point2} = erlgeom:to_geom({'Point', [5.0, 5.0]}), 
+   [{"Polygon within polygon works 1", ?_assertNot(erlgeom:within(Geom1, Geom2))}],
+   [{"Polygon within polygon works 2", ?_assert(erlgeom:within(Geom2, Geom1))}],
+   [{"Point within polygon works 1", ?_assert(erlgeom:within(Point1, Geom1))}],
+   [{"Point within polygon works 2", ?_assert(erlgeom:within(Point2, Geom1))}].
+
 geosstrtree_create_test_() ->
     GeosSTRtree = erlgeom:geosstrtree_create(),
     Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
     [{"STRTree creation works", ?_assertEqual([], Geoms)}].
     %etap:is(Geoms, [], "STRTree creation works.").
 
-geosstrtree_insert_test_() ->
+geosstrtree_insert_testdisabled_() ->
     GeosSTRtree = erlgeom:geosstrtree_create(),
     Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
     {ok, Geom1} = erlgeom:to_geom(Ls1),

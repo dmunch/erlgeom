@@ -33,6 +33,27 @@ static ErlNifResourceType* GEOSWKBREADER_RESOURCE;
 static ErlNifResourceType* GEOSWKBWRITER_RESOURCE;
 static ErlNifResourceType* GEOSSTRTREE_RESOURCE;
 
+typedef struct
+{
+  int error_count;
+  ERL_NIF_TERM error_list;
+  ErlNifEnv* env;
+} UserData;
+
+static void noticeMessageHandler(const char *message, void *userdata)
+{
+}
+
+static void errorMessageHandler(const char *message, void *userdata)
+{
+  UserData* ud = (UserData*) userdata;
+    
+  if(!ud->error_list) {
+    ud->error_list = enif_make_list(ud->env, 0);
+  }
+  ud->error_list = enif_make_list_cell(ud->env, enif_make_string(ud->env, message, ERL_NIF_LATIN1), ud->error_list);
+}
+
 /* Currently support for 2 dimensions only */
 int
 set_GEOSCoordSeq_from_eterm_list(GEOSCoordSequence *seq, int pos,
@@ -561,39 +582,62 @@ unload(ErlNifEnv* env, void* priv_data)
  *
  ***********************************************************************/
 
+
+#define BINARY_OP(name, method)                                                   \
+static ERL_NIF_TERM                                                               \
+name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                         \
+{                                                                                 \
+    GEOSGeometry **geom1;                                                         \
+    GEOSGeometry **geom2;                                                         \
+                                                                                  \
+    if (argc != 2) {                                                              \
+        return enif_make_badarg(env);                                             \
+    }                                                                             \
+                                                                                  \
+    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {     \
+        return enif_make_badarg(env);                                             \
+    }                                                                             \
+    if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {     \
+        return enif_make_badarg(env);                                             \
+    }                                                                             \
+                                                                                  \
+    GEOSContextHandle_t context = GEOS_init_r();                                  \
+    UserData* user_data = (UserData*) malloc(sizeof(UserData));                   \
+    user_data->error_list = 0;                                                    \
+    user_data->env = env;                                                         \
+                                                                                  \
+    GEOSContext_setNoticeMessageHandler_r(context,                                \
+        noticeMessageHandler, user_data);                                         \
+    GEOSContext_setErrorMessageHandler_r(context,                                 \
+        errorMessageHandler, user_data);                                          \
+                                                                                  \  
+    int result;                                                                   \
+    ERL_NIF_TERM eterm;                                                           \
+    if ((result = method(context, *geom1, *geom2)) == 1 ) {                       \
+        eterm = enif_make_atom(env, "true");                                      \
+    } else if (result == 0) {                                                     \
+        eterm = enif_make_atom(env, "false");                                     \
+    } else if (user_data->error_list){                                            \
+      eterm = enif_make_tuple2(env,                                               \
+            enif_make_atom(env, "error"),                                         \
+            user_data->error_list);                                               \
+    } else {                                                                      \
+      eterm = enif_make_atom(env, "error");                                       \
+    }                                                                             \
+                                                                                  \
+    GEOS_finish_r(context);                                                       \
+    free(user_data);                                                              \
+                                                                                  \
+    return eterm;                                                                 \
+}                           
+
 /*
 Geom1 = erlgeom:to_geom({'Point',[5,5]}),
 Geom2 = erlgeom:to_geom({'LineString', [[1,1],[14,14]]}),
 erlgeom:disjoint(Geom1, Geom2).
 false
 */
-static ERL_NIF_TERM
-disjoint(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    GEOSGeometry **geom1;
-    GEOSGeometry **geom2;
-
-    if (argc != 2) {
-        return enif_make_badarg(env);
-    }
-
-    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {
-        return enif_make_badarg(env);
-    }
-
-    if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {
-        return enif_make_badarg(env);
-    }
-    
-    int result;
-    if ((result = GEOSDisjoint(*geom1, *geom2)) == 1) {
-        return enif_make_atom(env, "true");
-    } else if (result == 0) {
-        return enif_make_atom(env, "false");
-    } else {
-        return enif_make_atom(env, "error");
-    }
-}
+BINARY_OP(disjoint, GEOSDisjoint_r)
 
 /*
 Geom1 = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
@@ -601,32 +645,7 @@ Geom2 = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
 erlgeom:intersects(Geom1, Geom2).
 true
 */
-static ERL_NIF_TERM
-intersects(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    GEOSGeometry **geom1;
-    GEOSGeometry **geom2;
-
-    if (argc != 2) {
-        return enif_make_badarg(env);
-    }
-
-    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {
-        return enif_make_badarg(env);
-    }
-    if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {
-        return enif_make_badarg(env);
-    }
-
-    int result;
-    if ((result = GEOSIntersects(*geom1, *geom2)) == 1 ) {
-        return enif_make_atom(env, "true");
-    } else if (result == 0) {
-        return enif_make_atom(env, "false");
-    } else {
-        return enif_make_atom(env, "error");
-    }
-}
+BINARY_OP(intersects, GEOSIntersects_r)
 
 /*
 Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
@@ -634,33 +653,18 @@ Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}),
 erlgeom:contains(Geom1, Geom2).
 true
 */
-static ERL_NIF_TERM
-contains(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    GEOSGeometry **geom1;
-    GEOSGeometry **geom2;
+BINARY_OP(contains, GEOSContains_r)
 
-    if (argc != 2) {
-        return enif_make_badarg(env);
-    }
+/*
+Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
+Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}), 
+erlgeom:within(Geom1, Geom2).
+true
+*/
+BINARY_OP(within, GEOSWithin_r)
 
-    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {
-        return enif_make_badarg(env);
-    }
-    if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {
-        return enif_make_badarg(env);
-    }
 
-    int result;
-    if ((result = GEOSContains(*geom1, *geom2)) == 1 ) {
-        return enif_make_atom(env, "true");
-    } else if (result == 0) {
-        return enif_make_atom(env, "false");
-    } else {
-        return enif_make_atom(env, "error");
-    }
-}
-
+  
 /************************************************************************
  *
  * Topology operations - return NULL on exception.
@@ -1329,27 +1333,6 @@ geosstrtree_remove(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
  *
  ***********************************************************************/
 
-typedef struct
-{
-  int error_count;
-  ERL_NIF_TERM error_list;
-  ErlNifEnv* env;
-} UserData;
-
-static void noticeMessageHandler(const char *message, void *userdata)
-{
-}
-
-static void errorMessageHandler(const char *message, void *userdata)
-{
-  UserData* ud = (UserData*) userdata;
-    
-  if(!ud->error_list) {
-    ud->error_list = enif_make_list(ud->env, 0);
-  }
-  ud->error_list = enif_make_list_cell(ud->env, enif_make_string(ud->env, message, ERL_NIF_LATIN1), ud->error_list);
-}
-
 static
 ERL_NIF_TERM to_geom(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     ERL_NIF_TERM eterm;
@@ -1415,6 +1398,7 @@ static ErlNifFunc nif_funcs[] =
     {"intersection", 2, intersection},
     {"intersects", 2, intersects},
     {"contains", 2, contains},
+    {"within", 2, within},
     {"is_valid", 1, is_valid},
     {"to_geom", 1, to_geom},
     {"topology_preserve_simplify", 2, topology_preserve_simplify},
