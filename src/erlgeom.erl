@@ -18,10 +18,12 @@
     to_geom_validate/1,
     disjoint/2,
     from_geom/1,
-    geosstrtree_create/0,
-    geosstrtree_insert/3,
-    geosstrtree_iterate/1,
-    geosstrtree_query/2,
+    %Those functions don't seem very safe, tests 
+    %regularly crash with segfault
+    %geosstrtree_create/0,
+    %geosstrtree_insert/3,
+    %geosstrtree_iterate/1,
+    %geosstrtree_query/2,
     %%geosstrtree_remove/3,
     get_centroid/1,
     intersection/2,
@@ -70,18 +72,20 @@ init() ->
 disjoint(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
-geosstrtree_create() ->
-    erlang:nif_error(nif_not_loaded).
-
-geosstrtree_insert(_RTree, _Geom, _Eterm) ->
-    erlang:nif_error(nif_not_loaded).
-
-geosstrtree_iterate(_RTree) ->
-    erlang:nif_error(nif_not_loaded).
-
-geosstrtree_query(_Rtree, _Geom) ->
-    erlang:nif_error(nif_not_loaded).
-
+%%Those functions don't seem very safe, tests 
+%%regularly crash with segfault
+%%geosstrtree_create() ->
+%%    erlang:nif_error(nif_not_loaded).
+%%
+%%geosstrtree_insert(_RTree, _Geom, _Eterm) ->
+%%    erlang:nif_error(nif_not_loaded).
+%%
+%%geosstrtree_iterate(_RTree) ->
+%%    erlang:nif_error(nif_not_loaded).
+%%
+%%geosstrtree_query(_Rtree, _Geom) ->
+%%    erlang:nif_error(nif_not_loaded).
+%%
 %%geosstrtree_remove(_RTree, _Geom, _Eterm) ->
 %%    erlang:nif_error(nif_not_loaded).
 
@@ -415,42 +419,44 @@ within_test_() ->
    [{"Point within polygon works 1", ?_assert(erlgeom:within(Point1, Geom1))}],
    [{"Point within polygon works 2", ?_assert(erlgeom:within(Point2, Geom1))}].
 
-geosstrtree_create_test_() ->
-    GeosSTRtree = erlgeom:geosstrtree_create(),
-    Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
-    [{"STRTree creation works", ?_assertEqual([], Geoms)}].
-    %etap:is(Geoms, [], "STRTree creation works.").
-
-geosstrtree_insert_testdisabled_() ->
-    GeosSTRtree = erlgeom:geosstrtree_create(),
-    Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
-    {ok, Geom1} = erlgeom:to_geom(Ls1),
-    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
-    [Element1 | _] = erlgeom:geosstrtree_iterate(GeosSTRtree),
-    [{"STRTree insertion works", ?_assertEqual(Ls1, Element1)}].
-    %etap:is(Element1, Ls1, "STRTree insertion works.").
-
-geosstrtree_iterate_test_() ->
-    GeosSTRtree = erlgeom:geosstrtree_create(),
-    Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
-    [{"STRTree iteration works", ?_assertEqual(0, length(Geoms))}].
-%    etap:is(length(Geoms), 0,"STRTree iteration works.").
-
-geosstrtree_query_test_() ->
-    GeosSTRtree = erlgeom:geosstrtree_create(),
-    Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
-    {ok, Geom1} = erlgeom:to_geom(Ls1),
-    Ls2 = {'LineString', [[1.0,1.0],[7.0,7.0]]},
-    {ok, Geom2} = erlgeom:to_geom(Ls2),
-    Ls3 = {'LineString', [[3.0,3.0],[6.0,6.0]]},
-    {ok, Geom3} = erlgeom:to_geom(Ls3),
-    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
-    erlgeom:geosstrtree_insert(GeosSTRtree, Geom2, Ls2),
-    erlgeom:geosstrtree_insert(GeosSTRtree, Geom3, Ls3),
-    Ls4 = {'LineString', [[6.0,6.0],[7.0,7.0]]},
-    {ok, Geom4} = erlgeom:to_geom(Ls4),
-    Geoms = erlgeom:geosstrtree_query(GeosSTRtree, Geom4),
-    [{"STRTree query works", ?_assertEqual(2, length(Geoms))}].
+%%Those functions don't seem very safe, tests 
+%%regularly crash with segfault
+%%geosstrtree_create_test_() ->
+%%    GeosSTRtree = erlgeom:geosstrtree_create(),
+%%    Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
+%%    [{"STRTree creation works", ?_assertEqual([], Geoms)}].
+%%    %etap:is(Geoms, [], "STRTree creation works.").
+%%
+%%geosstrtree_insert_test_() ->
+%%    GeosSTRtree = erlgeom:geosstrtree_create(),
+%%    Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
+%%    {ok, Geom1} = erlgeom:to_geom(Ls1),
+%%    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
+%%    [Element1 | _] = erlgeom:geosstrtree_iterate(GeosSTRtree),
+%%    [{"STRTree insertion works", ?_assertEqual(Ls1, Element1)}].
+%%    %etap:is(Element1, Ls1, "STRTree insertion works.").
+%%
+%%geosstrtree_iterate_test_() ->
+%%    GeosSTRtree = erlgeom:geosstrtree_create(),
+%%    Geoms = erlgeom:geosstrtree_iterate(GeosSTRtree),
+%%    [{"STRTree iteration works", ?_assertEqual(0, length(Geoms))}].
+%%%    etap:is(length(Geoms), 0,"STRTree iteration works.").
+%%
+%%geosstrtree_query_test_() ->
+%%    GeosSTRtree = erlgeom:geosstrtree_create(),
+%%    Ls1 = {'LineString', [[1.0,1.0],[5.0,5.0]]},
+%%    {ok, Geom1} = erlgeom:to_geom(Ls1),
+%%    Ls2 = {'LineString', [[1.0,1.0],[7.0,7.0]]},
+%%    {ok, Geom2} = erlgeom:to_geom(Ls2),
+%%    Ls3 = {'LineString', [[3.0,3.0],[6.0,6.0]]},
+%%    {ok, Geom3} = erlgeom:to_geom(Ls3),
+%%    erlgeom:geosstrtree_insert(GeosSTRtree, Geom1, Ls1),
+%%    erlgeom:geosstrtree_insert(GeosSTRtree, Geom2, Ls2),
+%%    erlgeom:geosstrtree_insert(GeosSTRtree, Geom3, Ls3),
+%%    Ls4 = {'LineString', [[6.0,6.0],[7.0,7.0]]},
+%%    {ok, Geom4} = erlgeom:to_geom(Ls4),
+%%    Geoms = erlgeom:geosstrtree_query(GeosSTRtree, Geom4),
+%%    [{"STRTree query works", ?_assertEqual(2, length(Geoms))}].
 
 %%geosstrtree_remove_test_() ->
 %%    GeosSTRtree = erlgeom:geosstrtree_create(),
