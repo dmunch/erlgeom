@@ -787,6 +787,50 @@ topology_preserve_simplify(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
  *  Validity checking
  *
  ***********************************************************************/
+#define UNARY_OP(name, method)                                                    \
+static ERL_NIF_TERM                                                               \
+name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                         \
+{                                                                                 \
+    GEOSGeometry **geom;                                                          \
+                                                                                  \
+    if (argc != 1) {                                                              \
+        return enif_make_badarg(env);                                             \
+    }                                                                             \
+                                                                                  \
+    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom)) {      \
+        return enif_make_badarg(env);                                             \
+    }                                                                             \
+                                                                                  \
+    GEOSContextHandle_t context = GEOS_init_r();                                  \
+    UserData* user_data = (UserData*) malloc(sizeof(UserData));                   \
+    user_data->error_list = 0;                                                    \
+    user_data->env = env;                                                         \
+                                                                                  \
+    GEOSContext_setNoticeMessageHandler_r(context,                                \
+        noticeMessageHandler, user_data);                                         \
+    GEOSContext_setErrorMessageHandler_r(context,                                 \
+        errorMessageHandler, user_data);                                          \
+                                                                                  \  
+    int result;                                                                   \
+    ERL_NIF_TERM eterm;                                                           \
+    if ((result = method(context, *geom)) == 1 ) {                                \
+        eterm = enif_make_atom(env, "true");                                      \
+    } else if (result == 0) {                                                     \
+        eterm = enif_make_atom(env, "false");                                     \
+    } else if (user_data->error_list){                                            \
+      eterm = enif_make_tuple2(env,                                               \
+            enif_make_atom(env, "error"),                                         \
+            user_data->error_list);                                               \
+    } else {                                                                      \
+      eterm = enif_make_atom(env, "error");                                       \
+    }                                                                             \
+                                                                                  \
+    GEOS_finish_r(context);                                                       \
+    free(user_data);                                                              \
+                                                                                  \
+    return eterm;                                                                 \
+}                           
+
 /*
 Geom1 = erlgeom:to_geom({'LineString', [[4,4], [4.5, 4.5], [10,10]]}),
 erlgeom:is_valid(Geom1).
@@ -795,30 +839,8 @@ Geom2 = erlgeom:wktreader_read(WktReader,"POLYGON((0 0, 1 1, 1 2, 1 1, 0 0))"),
 erlgeom:is_valid(Geom2).
 false
 */
-static ERL_NIF_TERM
-is_valid(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    GEOSGeometry **geom1;
+UNARY_OP(is_valid, GEOSisValid_r)
 
-    if (argc != 1) {
-        return enif_make_badarg(env);
-    }
-
-    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {
-        return enif_make_badarg(env);
-    }
-
-    int isvalid;
-    if ((isvalid = GEOSisValid(*geom1)) == 1 ) {
-        return enif_make_atom(env, "true");
-    }
-    else if (isvalid == 0) {
-        return enif_make_atom(env, "false");
-    }
-    else {
-        return enif_make_atom(env, "error");
-    }
-}
 
 /************************************************************************
  *
