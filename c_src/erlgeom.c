@@ -27,6 +27,7 @@
 #define DIMENSION 2
 
 static ErlNifResourceType* GEOSGEOM_RESOURCE;
+static ErlNifResourceType* GEOSPREPAREDGEOM_RESOURCE;
 static ErlNifResourceType* GEOSWKTREADER_RESOURCE;
 static ErlNifResourceType* GEOSWKTWRITER_RESOURCE;
 static ErlNifResourceType* GEOSWKBREADER_RESOURCE;
@@ -499,6 +500,13 @@ geom_destroy(ErlNifEnv *env, void *obj)
 }
 
 static void
+preparedgeom_destroy(ErlNifEnv *env, void *obj)
+{
+    GEOSPreparedGeometry **geom = (GEOSPreparedGeometry**)obj;
+    GEOSPreparedGeom_destroy(*geom);
+}
+
+static void
 wktreader_destroy(ErlNifEnv *env, void *obj)
 {
     GEOSWKTReader **wkt_reader = (GEOSWKTReader**)obj;
@@ -545,6 +553,10 @@ load(ErlNifEnv *env, void **priv, ERL_NIF_TERM load_info)
     GEOSGEOM_RESOURCE = enif_open_resource_type(
         env, NULL, "geosgeom_resource", &geom_destroy,
         ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER, NULL);
+    
+    GEOSPREPAREDGEOM_RESOURCE = enif_open_resource_type(
+        env, NULL, "geospreparedgeom_resource", &preparedgeom_destroy,
+        ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER, NULL);
 
     GEOSWKTREADER_RESOURCE = enif_open_resource_type(
         env, NULL, "geoswktreader_resource", &wktreader_destroy,
@@ -582,19 +594,18 @@ unload(ErlNifEnv* env, void* priv_data)
  *
  ***********************************************************************/
 
-
-#define BINARY_OP(name, method)                                                   \
+#define BINARY_OP(name, type, resource_type, method)                              \
 static ERL_NIF_TERM                                                               \
 name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                         \
 {                                                                                 \
-    GEOSGeometry **geom1;                                                         \
+    type **geom1;                                                                 \
     GEOSGeometry **geom2;                                                         \
                                                                                   \
     if (argc != 2) {                                                              \
         return enif_make_badarg(env);                                             \
     }                                                                             \
                                                                                   \
-    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom1)) {     \
+    if(!enif_get_resource(env, argv[0], resource_type, (void**)&geom1)) {         \
         return enif_make_badarg(env);                                             \
     }                                                                             \
     if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {     \
@@ -637,7 +648,8 @@ Geom2 = erlgeom:to_geom({'LineString', [[1,1],[14,14]]}),
 erlgeom:disjoint(Geom1, Geom2).
 false
 */
-BINARY_OP(disjoint, GEOSDisjoint_r)
+BINARY_OP(disjoint, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSDisjoint_r)
+BINARY_OP(prepared_disjoint, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedDisjoint_r)
 
 /*
 Geom1 = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
@@ -645,7 +657,8 @@ Geom2 = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
 erlgeom:intersects(Geom1, Geom2).
 true
 */
-BINARY_OP(intersects, GEOSIntersects_r)
+BINARY_OP(intersects, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSIntersects_r)
+BINARY_OP(prepared_intersects, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedIntersects_r)
 
 /*
 Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
@@ -653,7 +666,8 @@ Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}),
 erlgeom:contains(Geom1, Geom2).
 true
 */
-BINARY_OP(contains, GEOSContains_r)
+BINARY_OP(contains, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSContains_r)
+BINARY_OP(prepared_contains, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedContains_r)
 
 /*
 Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
@@ -661,7 +675,8 @@ Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}),
 erlgeom:within(Geom1, Geom2).
 true
 */
-BINARY_OP(within, GEOSWithin_r)
+BINARY_OP(within, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSWithin_r)
+BINARY_OP(prepared_within, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedWithin_r)
 
 
   
@@ -781,6 +796,51 @@ topology_preserve_simplify(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return eterm;
 }
 
+prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                         
+{                                                                                 
+    GEOSGeometry **geom;                                                         
+                                                                                 
+    if (argc != 1) {                                                            
+        return enif_make_badarg(env);                                           
+    }                                                                          
+                                                                              
+    if(!enif_get_resource(env, argv[0], GEOSGEOM_RESOURCE, (void**)&geom)) {      
+        return enif_make_badarg(env);                                             
+    }                                                                             
+                                                                                  
+    GEOSContextHandle_t context = GEOS_init_r();                                  
+    UserData* user_data = (UserData*) malloc(sizeof(UserData));                   
+    user_data->error_list = 0;                                                    
+    user_data->env = env;                                                         
+                                                                                  
+    GEOSContext_setNoticeMessageHandler_r(context,                                
+        noticeMessageHandler, user_data);                                        
+    GEOSContext_setErrorMessageHandler_r(context,                                
+        errorMessageHandler, user_data);                                          
+                                                                                    
+    GEOSPreparedGeometry **result_geom = \
+        enif_alloc_resource(GEOSPREPAREDGEOM_RESOURCE, sizeof(GEOSPreparedGeometry*));
+    *result_geom = GEOSPrepare_r(context, *geom);
+    
+    
+    int result;                                                                   
+    ERL_NIF_TERM eterm;                                                           
+    if (!user_data->error_list) {                                
+      eterm = enif_make_tuple2(env,                                               
+          enif_make_atom(env, "ok"),                                         
+          enif_make_resource(env, result_geom));                                               
+      enif_release_resource(result_geom);
+    } else {                                           
+      eterm = enif_make_tuple2(env,                                               
+            enif_make_atom(env, "error"),                                         
+            user_data->error_list);                                               
+    }                                                                       
+                                                                                 
+    GEOS_finish_r(context);                                                    
+    free(user_data);                                                             
+                                                                                 
+    return eterm;                                       
+} 
 
 /************************************************************************
  *
@@ -1421,8 +1481,13 @@ static ErlNifFunc nif_funcs[] =
     {"intersects", 2, intersects},
     {"contains", 2, contains},
     {"within", 2, within},
+    {"prepared_disjoint", 2, prepared_disjoint},
+    {"prepared_intersects", 2, prepared_intersects},
+    {"prepared_contains", 2, prepared_contains},
+    {"prepared_within", 2, prepared_within},
     {"is_valid", 1, is_valid},
     {"to_geom", 1, to_geom},
+    {"prepare", 1, prepare},
     {"topology_preserve_simplify", 2, topology_preserve_simplify},
     {"wkbreader_create", 0, wkbreader_create},
     {"wkbreader_read", 2, wkbreader_read},

@@ -16,7 +16,6 @@
 
 -export([
     to_geom_validate/1,
-    disjoint/2,
     from_geom/1,
     %Those functions don't seem very safe, tests 
     %regularly crash with segfault
@@ -27,12 +26,18 @@
     %%geosstrtree_remove/3,
     get_centroid/1,
     intersection/2,
+    disjoint/2,
     intersects/2,
     contains/2,
     within/2,
+    prepared_disjoint/2,
+    prepared_intersects/2,
+    prepared_contains/2,
+    prepared_within/2,
     is_valid/1,
     topology_preserve_simplify/2,
     to_geom/1,
+    prepare/1,
     wkbreader_create/0,
     wkbreader_read/2,
     wkbreader_readhex/2,
@@ -102,6 +107,19 @@ contains(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
 within(_Geom1, _Geom2) ->
+    erlang:nif_error(nif_not_loaded).
+
+
+prepared_disjoint(_Geom1, _Geom2) ->
+    erlang:nif_error(nif_not_loaded).
+
+prepared_intersects(_Geom1, _Geom2) ->
+    erlang:nif_error(nif_not_loaded).
+
+prepared_contains(_Geom1, _Geom2) ->
+    erlang:nif_error(nif_not_loaded).
+
+prepared_within(_Geom1, _Geom2) ->
     erlang:nif_error(nif_not_loaded).
 
 is_valid(_Geom1) ->
@@ -244,6 +262,9 @@ all2(Fun, [H|T]) ->
 to_geom(_Geom) ->
     erlang:nif_error(nif_not_loaded).
 
+prepare(_Geom) ->
+    erlang:nif_error(nif_not_loaded).
+
 % @doc Convert a GEOS geometry to a GeoCouch geometry
 from_geom(_Geom) ->
     erlang:nif_error(nif_not_loaded).
@@ -370,10 +391,82 @@ disjoint_test_() ->
      {"Two geometries are not disjoint",
       ?_assertEqual([true,true,true,true,true,true, false, false], Results)}].
 
+%% Prepared disjoint seems to segfault. Disabled for the moment.
+prepared_disjoint_test_disabled_() ->
+    Pt = {'Point',[3.0, 3.0]},
+    Ls = {'LineString', [[1.0,1.0],[5.0,5.0]]},
+    {ok, Pt1} = erlgeom:to_geom(Pt),
+    {ok, Ls1} = erlgeom:to_geom(Ls),
+
+    % Some geometries are based on the GeoJSON specification
+    % http://geojson.org/geojson-spec.html (2010-08-17)
+    Geoms = [
+        {'Point', [100.0, 0.0]},
+        {'LineString', [[100.0, 0.0], [101.0, 1.0]]},
+        {'Polygon', [
+            [[100.0, 0.0], [101.0, 0.0], [100.0, 1.0], [100.0, 0.0]]
+        ]},
+        {'Polygon', [
+            [[100.0, 0.0], [101.0, 0.0], [100.0, 1.0], [100.0, 0.0]],
+            [[100.2, 0.2], [100.6, 0.2], [100.2, 0.6], [100.2, 0.2]]
+        ]},
+        {'MultiPoint', [[100.0, 0.0], [101.0, 1.0]]},
+        {'MultiLineString', [
+            [[100.0, 0.0], [101.0, 1.0]],
+            [[102.0, 2.0], [103.0, 3.0]]
+        ]},
+        {'MultiPolygon', [
+            [
+                [[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]
+            ],[
+                [[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+                [[100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2]]
+            ]
+        ]},
+        {'GeometryCollection', [
+            {'Point', [100.0, 0.0]},
+            {'LineString', [[101.0, 0.0], [102.0, 1.0]]}
+        ]}
+    ],
+
+    {ok, QueryGeom} = erlgeom:to_geom(
+        {'MultiPolygon',[[[[102.21960449216,1.66524628779],
+                   [101.10998535158,2.0385856805057],
+                   [100.30798339848,3.0483190208145],
+                   [101.29675292969,3.3225525920246],
+                   [102.83483886713,3.5418849006547],
+                   [104.1641845702,2.5764772510785],
+                   [103.60388183585,2.4337915164603],
+                   [102.88977050775,3.2128679544585],
+                   [101.58239746093,3.1251117377839],
+                   [101.27478027344,2.3898851337089],
+                   [101.42858886719,2.0605442798878],
+                   [101.42858886719,2.0715234662377],
+                   [102.21960449216,1.66524628779]]],
+                 [[[100.13220214849,2.3679314141203],
+                   [100.20910644536,1.3797028906988],
+                   [100.58264160159,0.68768106684542],
+                   [101.04406738283,1.5334617387448],
+                   [101.51647949219,1.1490463293633],
+                   [102.52722167964,-0.015427421675798],
+                   [102.68103027339,1.2588853394239],
+                   [100.13220214849,2.3679314141203]]]]}),
+    {ok, PreparedQueryGeom} = erlgeom:prepare(QueryGeom),
+    Results = lists:map(fun(Geom) -> {ok, G} = erlgeom:to_geom(Geom), erlgeom:prepared_disjoint(PreparedQueryGeom, G) end, Geoms),
+    [{"Two geometries are not disjoint",
+      ?_assertEqual([true,true,true,true,true,true, false, false], Results)}].
+
+
 intersects_test_() ->
     {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
     {ok, Geom2} = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
     [{"Linestring intersects works", ?_assert(erlgeom:intersects(Geom1, Geom2))}].
+
+prepared_intersects_test_() ->
+    {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    {ok, Geom2} = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
+    {ok, PreparedGeom1} = erlgeom:prepare(Geom1),
+    [{"Prepared Linestring intersects works", ?_assert(erlgeom:prepared_intersects(PreparedGeom1, Geom2))}].
 
 intersection_test_() ->
     {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
@@ -397,6 +490,22 @@ contains_test_() ->
       ]]}), 
     [{"Polygon contains works", ?_assert(erlgeom:contains(Geom1, Geom2))}].
 
+prepared_contains_test_() -> 
+   {ok, Geom1} = erlgeom:to_geom({'Polygon', [[
+        [0, 0],
+        [0, 10],
+        [10, 0],
+        [0, 0]
+      ]]}), 
+   {ok, Geom2} = erlgeom:to_geom({'Polygon', [[
+        [1, 1],
+        [1, 2],
+        [2, 2],
+        [1, 1]
+      ]]}),
+  {ok, PreparedGeom1} = erlgeom:prepare(Geom1), 
+  [{"Prepared Polygon contains works", ?_assert(erlgeom:prepared_contains(PreparedGeom1, Geom2))}].
+
 within_test_() -> 
    {ok, Geom1} = erlgeom:to_geom({'MultiPolygon', [[[
         [0.0, 0.0],
@@ -418,6 +527,32 @@ within_test_() ->
    [{"Polygon within polygon works 2", ?_assert(erlgeom:within(Geom2, Geom1))}],
    [{"Point within polygon works 1", ?_assert(erlgeom:within(Point1, Geom1))}],
    [{"Point within polygon works 2", ?_assert(erlgeom:within(Point2, Geom1))}].
+
+prepared_within_test_() -> 
+   {ok, Geom1} = erlgeom:to_geom({'MultiPolygon', [[[
+        [0.0, 0.0],
+        [0.0, 10.0],
+        [10.0, 10.0],
+        [10.0, 0.0],
+        [0.0, 0.0]
+      ]]]}), 
+   {ok, Geom2} = erlgeom:to_geom({'Polygon', [[
+        [1.0, 1.0],
+        [1.0, 2.0],
+        [2.0, 2.0],
+        [2.0, 1.0],
+        [1.0, 1.0]
+      ]]}), 
+   {ok, Point1} = erlgeom:to_geom({'Point', [2.0, 2.0]}), 
+   {ok, Point2} = erlgeom:to_geom({'Point', [5.0, 5.0]}),
+
+
+   {ok, PrepGeom1} = erlgeom:prepare(Geom1), 
+   {ok, PrepGeom2} = erlgeom:prepare(Geom2), 
+   [{"Polygon within polygon works 1", ?_assertNot(erlgeom:prepared_within(PrepGeom1, Geom2))}],
+   [{"Polygon within polygon works 2", ?_assert(erlgeom:prepared_within(PrepGeom2, Geom1))}].
+   %[{"Point within polygon works 1", ?_assert(erlgeom:within(Point1, Geom1))}],
+   %[{"Point within polygon works 2", ?_assert(erlgeom:within(Point2, Geom1))}].
 
 %%Those functions don't seem very safe, tests 
 %%regularly crash with segfault
