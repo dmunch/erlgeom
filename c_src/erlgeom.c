@@ -621,7 +621,7 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
         noticeMessageHandler, user_data);                                         \
     GEOSContext_setErrorMessageHandler_r(context,                                 \
         errorMessageHandler, user_data);                                          \
-                                                                                  \  
+                                                                                  \
     int result;                                                                   \
     ERL_NIF_TERM eterm;                                                           \
     if ((result = method(context, *geom1, *geom2)) == 1 ) {                       \
@@ -796,6 +796,7 @@ topology_preserve_simplify(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     return eterm;
 }
 
+static ERL_NIF_TERM
 prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                         
 {                                                                                 
     GEOSGeometry **geom;                                                         
@@ -818,7 +819,7 @@ prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     GEOSContext_setErrorMessageHandler_r(context,                                
         errorMessageHandler, user_data);                                          
                                                                                     
-    GEOSPreparedGeometry **result_geom = \
+    const GEOSPreparedGeometry **result_geom = \
         enif_alloc_resource(GEOSPREPAREDGEOM_RESOURCE, sizeof(GEOSPreparedGeometry*));
     *result_geom = GEOSPrepare_r(context, *geom);
     
@@ -871,7 +872,7 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
         noticeMessageHandler, user_data);                                         \
     GEOSContext_setErrorMessageHandler_r(context,                                 \
         errorMessageHandler, user_data);                                          \
-                                                                                  \  
+                                                                                  \
     int result;                                                                   \
     ERL_NIF_TERM eterm;                                                           \
     if ((result = method(context, *geom)) == 1 ) {                                \
