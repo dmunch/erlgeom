@@ -613,7 +613,7 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
     }                                                                             \
                                                                                   \
     GEOSContextHandle_t context = GEOS_init_r();                                  \
-    UserData* user_data = (UserData*) malloc(sizeof(UserData));                   \
+    UserData* user_data = (UserData*) enif_alloc(sizeof(UserData));               \
     user_data->error_list = 0;                                                    \
     user_data->env = env;                                                         \
                                                                                   \
@@ -637,7 +637,7 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
     }                                                                             \
                                                                                   \
     GEOS_finish_r(context);                                                       \
-    free(user_data);                                                              \
+    enif_free(user_data);                                                         \
                                                                                   \
     return eterm;                                                                 \
 }                           
@@ -809,7 +809,7 @@ prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }                                                                             
                                                                                   
     GEOSContextHandle_t context = GEOS_init_r();                                  
-    UserData* user_data = (UserData*) malloc(sizeof(UserData));                   
+    UserData* user_data = (UserData*) enif_alloc(sizeof(UserData));                   
     user_data->error_list = 0;                                                    
     user_data->env = env;                                                         
                                                                                   
@@ -837,7 +837,7 @@ prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }                                                                       
                                                                                  
     GEOS_finish_r(context);                                                    
-    free(user_data);                                                             
+    enif_free(user_data);                                                             
                                                                                  
     return eterm;                                       
 } 
@@ -862,7 +862,8 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
     }                                                                             \
                                                                                   \
     GEOSContextHandle_t context = GEOS_init_r();                                  \
-    UserData* user_data = (UserData*) malloc(sizeof(UserData));                   \
+    UserData* user_data = (UserData*) enif_alloc(sizeof(UserData));               \
+                                                                                  \
     user_data->error_list = 0;                                                    \
     user_data->env = env;                                                         \
                                                                                   \
@@ -886,7 +887,7 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
     }                                                                             \
                                                                                   \
     GEOS_finish_r(context);                                                       \
-    free(user_data);                                                              \
+    enif_free(user_data);                                                         \
                                                                                   \
     return eterm;                                                                 \
 }                           
@@ -1422,7 +1423,7 @@ ERL_NIF_TERM to_geom(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
         enif_alloc_resource(GEOSGEOM_RESOURCE, sizeof(GEOSGeometry*));
 
     GEOSContextHandle_t context = GEOS_init_r();
-    UserData* user_data = (UserData*) malloc(sizeof(UserData));
+    UserData* user_data = (UserData*) enif_alloc(sizeof(UserData));
     user_data->error_list = 0; 
     user_data->env = env;
 
@@ -1444,7 +1445,7 @@ ERL_NIF_TERM to_geom(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     }
 
     GEOS_finish_r(context);
-    free(user_data);
+    enif_free(user_data);
 
     return eterm;
 }
