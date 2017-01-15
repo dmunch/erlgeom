@@ -1,13 +1,36 @@
+This is version 0.2.x of erlgeom.
+
+Breaking Changes
+----------------
+
+Compared to its predecessors in version 0.1.x (See forks) this version introduces a breaking change in geometry construction.
+Where in previous versions you would create a geometry object like this
+    
+    1> Geom1 = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
+    
+You know have to explicietely check for errors in construction, i.e. 
+
+    2> {ok, Geom1} = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
+
+In case of an error `erlgeom:to_geom` returns ``{error, []}` with a list of error messages created by GEOS.
+
 Install
 -------
 
 Build it with:
 
-    make
+    rebar co 
 
 Run tests with:
 
-    make check
+    rebar eunit 
+
+On MacOSX
+---------
+
+You need to have GEOS installed. If you use brew it's as easy as
+
+    brew install geos 
 
 On Windows
 ----------
@@ -38,13 +61,13 @@ more examples.
 
     Eshell V5.8.4  (abort with ^G)
 
-    1> Geom1 = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
-    1> Geom2 = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
+    1> {ok, Geom1} = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
+    1> {ok, Geom2} = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
     1> erlgeom:intersects(Geom1, Geom2).
     true
 
-    2> Geom1 = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
-    2> Geom2 = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
+    2> {ok, Geom1} = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
+    2> {ok, Geom2} = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
     2> Geom3 = erlgeom:intersection(Geom1, Geom2),
     2> erlgeom:from_geom(Geom3).
     {'LineString', [[3,3],[7,7]]}
@@ -55,16 +78,16 @@ more examples.
     3> erlgeom:is_valid(Geom2).
     false
 
-    4> Geom1 = erlgeom:to_geom({'LineString', [[4,4],[10,10]]}),
+    4> {ok, Geom1} = erlgeom:to_geom({'LineString', [[4,4],[10,10]]}),
     4> Geom2 = erlgeom:get_centroid(Geom1),
     4> erlgeom:from_geom(Geom2).
     {'Point',[7.0,7.0]}
 
-    5> Geom1 = erlgeom:to_geom({'LineString', [[4,4], [4.5, 4.5], [10,10]]}),
+    5> {ok, Geom1} = erlgeom:to_geom({'LineString', [[4,4], [4.5, 4.5], [10,10]]}),
     5> erlgeom:topology_preserve_simplify(Geom1, 1).
     {'LineString',[[4.0,4.0],[10.0,10.0]]}
 
-    6> Geom1 = erlgeom:to_geom({'LineString', [[4,4], [4.5, 4.5], [10,10]]}),
+    6> {ok, Geom1} = erlgeom:to_geom({'LineString', [[4,4], [4.5, 4.5], [10,10]]}),
     6> erlgeom:is_valid(Geom1).
     true
 
