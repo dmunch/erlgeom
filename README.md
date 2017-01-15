@@ -16,7 +16,22 @@ You know have to explicietely check for errors in construction, i.e.
 
 In case of an error `erlgeom:to_geom` returns ``{error, []}` with a list of error messages created by GEOS.
 
-Install
+New Features
+-----------
+
+You can now use [prepared geometries](https://trac.osgeo.org/geos/wiki/PreparedGeometry).
+
+```erl
+prepared_intersects_test_() ->
+    {ok, Geom1} = erlgeom:to_geom({'LineString', [[1,1],[10,10]]}),
+    {ok, Geom2} = erlgeom:to_geom({'LineString', [[2,2],[9,9]]}),
+    {ok, PreparedGeom1} = erlgeom:prepare(Geom1),
+    [{"Prepared Linestring intersects works", ?_assert(erlgeom:prepared_intersects(PreparedGeom1, Geom2))}].
+````
+
+See [src/erlgeom.erl](src/erlgeom.erl) for more examples.
+
+## Install
 -------
 
 Build it with:
@@ -27,12 +42,29 @@ Run tests with:
 
     rebar eunit 
 
-On MacOSX
----------
+### Dependency
 
-You need to have GEOS installed. If you use brew it's as easy as
+This version of erlgeom depends on GEOS Version ~> 2.5. 
+This is due to the [reentrant error reporting methods](https://trac.osgeo.org/geos/wiki/RFC3) available
+starting with this version.
+
+#### On MacOSX
+
+If you use brew it's as easy as
 
     brew install geos 
+
+#### On Ubuntu 16.04 Xenial
+
+The provided version of libgeos is 1.5.0, install it with
+
+    apt-get install libgeos-dev
+
+#### On Ubuntu 14.04 Trusty
+
+Use the [ubuntugis-unstable PPA](https://launchpad.net/~ubuntugis/+archive/ubuntu/ubuntugis-unstable) 
+or install from source.
+
 
 On Windows
 ----------
