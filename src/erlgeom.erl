@@ -392,7 +392,7 @@ disjoint_test_() ->
       ?_assertEqual([true,true,true,true,true,true, false, false], Results)}].
 
 %% Prepared disjoint seems to segfault. Disabled for the moment.
-prepared_disjoint_test_disabled_() ->
+prepared_disjoint_test_() ->
     Pt = {'Point',[3.0, 3.0]},
     Ls = {'LineString', [[1.0,1.0],[5.0,5.0]]},
     {ok, Pt1} = erlgeom:to_geom(Pt),

@@ -594,7 +594,30 @@ unload(ErlNifEnv* env, void* priv_data)
  *
  ***********************************************************************/
 
-#define BINARY_OP(name, type, resource_type, method)                              \
+char get_geometry(ErlNifEnv* env, ERL_NIF_TERM term, void** geom) 
+{
+  return enif_get_resource(env, term, GEOSGEOM_RESOURCE, geom);
+} 
+
+char get_prepared_geometry(ErlNifEnv* env, ERL_NIF_TERM term, void** prepared_geom) 
+{
+  const ERL_NIF_TERM* tuple;
+  int arity;
+
+  if(!enif_get_tuple(env, term, &arity, &tuple))
+  {
+    return 0;
+  } 
+  if(arity != 2) 
+  {
+    return 0;
+  }
+  
+  return enif_get_resource(env, tuple[0], GEOSPREPAREDGEOM_RESOURCE, prepared_geom);
+} 
+
+
+#define BINARY_OP(name, type, get_function, method)                               \
 static ERL_NIF_TERM                                                               \
 name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                         \
 {                                                                                 \
@@ -605,7 +628,7 @@ name(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])                       
         return enif_make_badarg(env);                                             \
     }                                                                             \
                                                                                   \
-    if(!enif_get_resource(env, argv[0], resource_type, (void**)&geom1)) {         \
+    if(!get_function(env, argv[0], (void**)&geom1)) {                             \
         return enif_make_badarg(env);                                             \
     }                                                                             \
     if(!enif_get_resource(env, argv[1], GEOSGEOM_RESOURCE, (void**)&geom2)) {     \
@@ -648,8 +671,8 @@ Geom2 = erlgeom:to_geom({'LineString', [[1,1],[14,14]]}),
 erlgeom:disjoint(Geom1, Geom2).
 false
 */
-BINARY_OP(disjoint, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSDisjoint_r)
-BINARY_OP(prepared_disjoint, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedDisjoint_r)
+BINARY_OP(disjoint, GEOSGeometry, get_geometry, GEOSDisjoint_r)
+BINARY_OP(prepared_disjoint, GEOSPreparedGeometry, get_prepared_geometry, GEOSPreparedDisjoint_r)
 
 /*
 Geom1 = erlgeom:to_geom({'LineString', [[3,3],[10,10]]}),
@@ -657,8 +680,8 @@ Geom2 = erlgeom:to_geom({'LineString', [[1,1],[7,7]]}),
 erlgeom:intersects(Geom1, Geom2).
 true
 */
-BINARY_OP(intersects, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSIntersects_r)
-BINARY_OP(prepared_intersects, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedIntersects_r)
+BINARY_OP(intersects, GEOSGeometry, get_geometry, GEOSIntersects_r)
+BINARY_OP(prepared_intersects, GEOSPreparedGeometry, get_prepared_geometry, GEOSPreparedIntersects_r)
 
 /*
 Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
@@ -666,8 +689,8 @@ Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}),
 erlgeom:contains(Geom1, Geom2).
 true
 */
-BINARY_OP(contains, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSContains_r)
-BINARY_OP(prepared_contains, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedContains_r)
+BINARY_OP(contains, GEOSGeometry, get_geometry, GEOSContains_r)
+BINARY_OP(prepared_contains, GEOSPreparedGeometry, get_prepared_geometry, GEOSPreparedContains_r)
 
 /*
 Geom1 = erlgeom:to_geom({'Polygon', [[ [0, 0], [0, 10], [10, 0], [0, 0] ]]}), 
@@ -675,8 +698,8 @@ Geom2 = erlgeom:to_geom({'Polygon', [[ [1, 1], [1, 2], [2, 2], [1, 1] ]]}),
 erlgeom:within(Geom1, Geom2).
 true
 */
-BINARY_OP(within, GEOSGeometry, GEOSGEOM_RESOURCE, GEOSWithin_r)
-BINARY_OP(prepared_within, GEOSPreparedGeometry, GEOSPREPAREDGEOM_RESOURCE, GEOSPreparedWithin_r)
+BINARY_OP(within, GEOSGeometry, get_geometry, GEOSWithin_r)
+BINARY_OP(prepared_within, GEOSPreparedGeometry, get_prepared_geometry, GEOSPreparedWithin_r)
 
 
   
@@ -829,7 +852,7 @@ prepare(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     if (!user_data->error_list) {                                
       eterm = enif_make_tuple2(env,                                               
           enif_make_atom(env, "ok"),                                         
-          enif_make_resource(env, result_geom));                                               
+          enif_make_tuple2(env, enif_make_resource(env, result_geom), argv[0]));
       enif_release_resource(result_geom);
     } else {                                           
       eterm = enif_make_tuple2(env,                                               
