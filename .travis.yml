@@ -1,0 +1,15 @@
+language: erlang
+dist: trusty
+otp_release:
+  - 18.2.1
+
+sudo: false
+addons:
+  apt:
+    sources:
+    - sourceline: 'ppa:ubuntugis/ubuntugis-unstable'
+    packages:
+    - libgeos-c1v5
+    - libgeos-dev
+ 
+script: rebar co eunit

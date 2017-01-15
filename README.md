@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/dmunch/erlgeom.svg?branch=master)](https://travis-ci.org/dmunch/erlgeom)
+
 This is version 0.2.x of erlgeom.
 
 Breaking Changes
